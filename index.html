@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>DFO Tool</title>
+    <!-- ArcGIS JS 4 CSS -->
+    <link rel="stylesheet" href="https://js.arcgis.com/4.8/esri/css/main.css">
+    <link rel="stylesheet" href="https://js.arcgis.com/4.8/dijit/themes/claro/claro.css">
+    <!-- Bootstrap CSS CDN  -->
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css" integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
+    <!-- FontAwesome CSS CDN  -->
+    <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.4.1/css/all.css" integrity="sha384-5sAR7xN1Nv6T6+dT2mhtzEpVJvfS3NScPQTrOxhwjIuvcA67KV2R5Jz6kr4abQsz"crossorigin="anonymous">
+
+    <style>
+        html,
+        body {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            width: 100%;
+            font-family: 'Poppins', sans-serif !important;
+        }
+
+        #mapViewDiv {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            width: 100%;
+        }
+    </style>
+</head>
+<body>
+    <div id="mapViewDiv">
+
+    </div>
+
+
+    <!-- jQuery CDN - Slim version (=without AJAX) -->
+    <script src="https://code.jquery.com/jquery-3.3.1.slim.min.js"
+        integrity="sha384-q8i/X+965DzO0rT7abK41JStQIAqVgRVzpbzo5smXKp4YfRvH+8abtTE1Pi6jizo"
+        crossorigin="anonymous">
+    </script>
+    <!-- Popper.JS CDN-->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.3/umd/popper.min.js"
+        integrity="sha384-ZMP7rVo3mIykV+2+9J3UJ46jBk0WLaUAdn689aCwoqbBJiSnjAK/l8WvCWPIPm49"
+        crossorigin="anonymous">
+    </script>
+    <!-- Bootstrap JS -->
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.1.3/js/bootstrap.min.js"
+        integrity="sha384-ChfqqxuZUCnJSK3+MXmPNIyE6ZbWh2IMqE241rYiqJxyMiZ6OW/JmZQ5stwEULTy"
+        crossorigin="anonymous">
+    </script>
+    <!-- Enable WebGL Rendering-->
+    <script>
+        var dojoConfig = {
+            has: {"esri-featurelayer-webgl": 1}
+        };
+    </script>
+    <!-- ArcGIS JS 4 -->
+    <script src="https://js.arcgis.com/4.8"></script>
+
+    <script>
+        var esri;
+        var map;
+        var queryTask;
+        var query;
+        var measureClicked = false;
+        var gidWithMeasuresGeom;
+        var mapPoint;
+        var tileLayer;
+        require([
+        // map and mapview
+        "esri/Map",
+        "esri/views/MapView",
+
+        // UI
+        "esri/widgets/Home",
+        "esri/widgets/Zoom",
+        "esri/widgets/ScaleBar",
+        "esri/widgets/CoordinateConversion",
+
+        // basemap and layers
+        "esri/layers/VectorTileLayer",
+        "esri/Basemap",
+
+        // dojo
+        "dojo/dom",
+        "dojo/domReady!"
+        ],
+
+        function(
+        Map,
+        MapView,
+        Home,
+        Zoom,
+        ScaleBar,
+        CoordinateConversion,
+        VectorTileLayer,
+        Basemap,
+        dom
+        ) {
+            // CONSTRUCT MAP WITH INITIAL BASEMAP
+            var spmVectorTile = new VectorTileLayer({
+                url: "https://tiles.arcgis.com/tiles/KTcxiTD9dsQw4r7Z/arcgis/rest/services/TxDOT_Vector_Tile_Basemap/VectorTileServer",
+                id: "txdot"
+            });
+
+            var spmBasemap = new Basemap({
+                baseLayers: spmVectorTile,
+            });
+
+            var map = new Map({
+                basemap: spmBasemap
+            });
+
+            // VIEW
+            var mapView = new MapView({
+                container: "mapViewDiv",
+                map: map,
+                center: [-100.341389, 31.132222],
+                zoom: 6,
+                spatialReference: {wkid: 102100},
+                constraints: {
+                    minZoom: 5,
+                    rotationEnabled: false
+                },
+                popup: {
+                    dockOptions: {
+                        position: "bottom-right"
+                    }
+                }
+            });
+
+            // ESRI UI WIDGETS
+            var home = new Home({
+                view: mapView
+            });
+            var zoom = new Zoom({
+                view: mapView
+            });
+            var scalebar = new ScaleBar({
+                view: mapView,
+                unit: "dual",
+            });
+            var coordConv = new CoordinateConversion({
+                view: mapView,
+            });
+
+            // ADD/MODIFY WIDGETS IN THE VIEW
+            mapView.ui.remove("attribution");
+            mapView.ui.empty("top-left");
+            mapView.ui.add([
+                {
+                    component: home,
+                    position: "top-right",
+                    index: 1
+                }, {
+                    component: zoom,
+                    position: "top-right",
+                    index: 0
+                }, {
+                    component: scalebar,
+                    position: "bottom-right",
+                    index: 0
+                }, {
+                    component: coordConv,
+                    position: "bottom-left",
+                    index: 0
+                }
+            ]);
+        });
+    </script>
+</body>
+</html>
