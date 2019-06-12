@@ -63,15 +63,15 @@
 
     <script>
 
-        var TxDOTVectorTileLayer;
-        var esri;
-        var map;
-        var queryTask;
-        var query;
-        var measureClicked = false;
-        var gidWithMeasuresGeom;
-        var mapPoint;
-        var featurePartIndex;
+        let TxDOTVectorTileLayer;
+        let esri;
+        let map;
+        let queryTask;
+        let query;
+        let measureClicked = false;
+        let gidWithMeasuresGeom;
+        let mapPoint;
+        let featurePartIndex;
 
         require([
         // map and mapview
@@ -105,21 +105,21 @@
         dom
         ) {
             // CONSTRUCT MAP WITH INITIAL BASEMAP
-            var spmVectorTile = new VectorTileLayer({
+            const spmVectorTile = new VectorTileLayer({
                 url: "https://tiles.arcgis.com/tiles/KTcxiTD9dsQw4r7Z/arcgis/rest/services/TxDOT_Vector_Tile_Basemap/VectorTileServer",
                 id: "txdot"
             });
 
-            var spmBasemap = new Basemap({
+            const spmBasemap = new Basemap({
                 baseLayers: spmVectorTile,
             });
 
-            var map = new Map({
+            const map = new Map({
                 basemap: spmBasemap
             });
 
             // VIEW
-            var mapView = new MapView({
+            const mapView = new MapView({
                 container: "mapViewDiv",
                 map: map,
                 center: [-100.341389, 31.132222],
@@ -137,17 +137,17 @@
             });
 
             // ESRI UI WIDGETS
-            var home = new Home({
+            const home = new Home({
                 view: mapView
             });
-            var zoom = new Zoom({
+            const zoom = new Zoom({
                 view: mapView
             });
-            var scalebar = new ScaleBar({
+            const scalebar = new ScaleBar({
                 view: mapView,
                 unit: "dual",
             });
-            var coordConv = new CoordinateConversion({
+            const coordConv = new CoordinateConversion({
                 view: mapView,
             });
 
