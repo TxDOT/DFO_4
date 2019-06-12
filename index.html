@@ -62,6 +62,8 @@
     <script src="https://js.arcgis.com/4.8"></script>
 
     <script>
+
+        var TxDOTVectorTileLayer;
         var esri;
         var map;
         var queryTask;
@@ -69,7 +71,8 @@
         var measureClicked = false;
         var gidWithMeasuresGeom;
         var mapPoint;
-        var tileLayer;
+        var featurePartIndex;
+
         require([
         // map and mapview
         "esri/Map",
