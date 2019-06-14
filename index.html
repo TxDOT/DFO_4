@@ -6,8 +6,8 @@
     <meta http-equiv="X-UA-Compatible" content="ie=edge">
     <title>DFO Tool</title>
     <!-- ArcGIS JS 4 CSS -->
-    <link rel="stylesheet" href="https://js.arcgis.com/4.8/esri/css/main.css">
-    <link rel="stylesheet" href="https://js.arcgis.com/4.8/dijit/themes/claro/claro.css">
+    <link rel="stylesheet" href="https://js.arcgis.com/4.11/esri/css/main.css">
+    <link rel="stylesheet" href="https://js.arcgis.com/4.11/dijit/themes/claro/claro.css">
     <!-- Bootstrap CSS CDN  -->
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css" integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
     <!-- FontAwesome CSS CDN  -->
@@ -59,24 +59,26 @@
         };
     </script>
     <!-- ArcGIS JS 4 -->
-    <script src="https://js.arcgis.com/4.8"></script>
+    <script src="https://js.arcgis.com/4.11"></script>
 
     <script>
 
-        let TxDOTVectorTileLayer;
-        let esri;
-        let map;
-        let queryTask;
-        let query;
-        let measureClicked = false;
-        let gidWithMeasuresGeom;
-        let mapPoint;
-        let featurePartIndex;
+        var TxDOTVectorTileLayer;
+        var esri;
+        var map;
+        var queryTask;
+        var query;
+        var measureClicked = false;
+        var gidWithMeasuresGeom;
+        var mapPoint;
+        var featurePartIndex;
 
         require([
-        // map and mapview
+        // map, view, and layers
         "esri/Map",
         "esri/views/MapView",
+        "esri/layers/VectorTileLayer",
+        "esri/Basemap",
 
         // UI
         "esri/widgets/Home",
@@ -84,9 +86,21 @@
         "esri/widgets/ScaleBar",
         "esri/widgets/CoordinateConversion",
 
-        // basemap and layers
-        "esri/layers/VectorTileLayer",
-        "esri/Basemap",
+        // esri config and tasks
+        "esri/config",
+        "esri/tasks/support/Query",
+        "esri/tasks/QueryTask",
+
+        // geometry
+        "esri/geometry/Extent",
+        "esri/geometry/geometryEngine",
+        "esri/geometry/SpatialReference",
+        "esri/geometry/Point",
+        "esri/geometry/Polyline",
+
+        // draw
+        "esri/views/draw/Draw",
+        "esri/Graphic",
 
         // dojo
         "dojo/dom",
@@ -96,12 +110,22 @@
         function(
         Map,
         MapView,
+        VectorTileLayer,
+        Basemap,
         Home,
         Zoom,
         ScaleBar,
         CoordinateConversion,
-        VectorTileLayer,
-        Basemap,
+        esriConfig,
+        Query,
+        QueryTask,
+        Extent,
+        geometryEngine,
+        SpatialReference,
+        Point,
+        Polyline,
+        Draw,
+        Graphic,
         dom
         ) {
             // CONSTRUCT MAP WITH INITIAL BASEMAP
@@ -173,6 +197,7 @@
                     index: 0
                 }
             ]);
+            console.log(measureClicked);
         });
     </script>
 </body>
