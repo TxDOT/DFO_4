@@ -29,9 +29,42 @@
             height: 100%;
             width: 100%;
         }
+        #divReadout {
+            position: absolute;
+            /* left: 60px; */
+            /* width: 300px */
+            top: 20px;
+            z-index: 100;
+            /* color: white; */
+            /* text-shadow: -2px -2px 0 #FFF, 2px -2px 0 #FFF, -2px 2px 0 #FFF, 2px 2px 0 #FFF; */
+        }
+        #outputMessages {
+            position: absolute;
+            z-index: 70;
+            top: 0px;
+            left: 0;
+            bottom: 0;
+            box-sizing: border-box;
+            padding: 20px;
+            height: 25%;
+            width: 220px;
+            background: rgba(0, 0, 0, 0.5);
+            color: white;
+            font-size: 14px;
+            line-height: 30px;
+            overflow: auto;
+     }
     </style>
 </head>
 <body>
+    <div id="outputMessages">
+        <div id="divReadout">
+        <button type="button" class="btn btn-dark btn-block" id="btnMeasureReadout" data-return="0" title="Click to Activate/Deactive LRS Tool.">LRS Tool</button>
+            <br><br>
+            <input id="radMPT" type="radio" name="lrsType" value="MPT" checked> Control Section Milepoint<br>
+            <input id="radDFO" type="radio" name="lrsType" value="DFO"> Distance From Origin<br>
+        </div>
+    </div>
     <div id="mapViewDiv">
 
     </div>
@@ -43,15 +76,16 @@
         crossorigin="anonymous">
     </script>
     <!-- Popper.JS CDN-->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.3/umd/popper.min.js"
-        integrity="sha384-ZMP7rVo3mIykV+2+9J3UJ46jBk0WLaUAdn689aCwoqbBJiSnjAK/l8WvCWPIPm49"
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js"
+        integrity="sha384-UO2eT0CpHqdSJQ6hJty5KVphtPhzWj9WO1clHTMGa3JDZwrnQq4sF86dIHNDz0W1"
         crossorigin="anonymous">
     </script>
     <!-- Bootstrap JS -->
-    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.1.3/js/bootstrap.min.js"
-        integrity="sha384-ChfqqxuZUCnJSK3+MXmPNIyE6ZbWh2IMqE241rYiqJxyMiZ6OW/JmZQ5stwEULTy"
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js"
+        integrity="sha384-JjSmVgyd0p3pXB1rRibZUAYoIIy6OrQ6VrjIEaFf/nJGzIxFDsf4x0xIM+B07jRM"
         crossorigin="anonymous">
     </script>
+
     <!-- Enable WebGL Rendering-->
     <script>
         var dojoConfig = {
@@ -68,13 +102,13 @@
         var map;
         var queryTask;
         var query;
-        var measureClicked = false;
+        // var measureClicked = false;
         var gidWithMeasuresGeom;
         var mapPoint;
         var featurePartIndex;
 
         require([
-            
+
         // map, view, and layers
         "esri/Map",
         "esri/views/MapView",
@@ -85,7 +119,6 @@
         "esri/widgets/Home",
         "esri/widgets/Zoom",
         "esri/widgets/ScaleBar",
-        "esri/widgets/CoordinateConversion",
 
         // esri config and tasks
         "esri/config",
@@ -105,6 +138,8 @@
 
         // dojo
         "dojo/dom",
+        "dojo/on",
+        "dojo/parser",
         "dojo/domReady!"
         ],
 
@@ -116,7 +151,6 @@
         Home,
         Zoom,
         ScaleBar,
-        CoordinateConversion,
         esriConfig,
         Query,
         QueryTask,
@@ -127,7 +161,9 @@
         Polyline,
         Draw,
         Graphic,
-        dom
+        dom,
+        on,
+        parser
         ) {
             // CONSTRUCT MAP WITH INITIAL BASEMAP
             const spmVectorTile = new VectorTileLayer({
@@ -172,9 +208,6 @@
                 view: mapView,
                 unit: "dual",
             });
-            const coordConv = new CoordinateConversion({
-                view: mapView,
-            });
 
             // ADD/MODIFY WIDGETS IN THE VIEW
             mapView.ui.remove("attribution");
@@ -192,13 +225,116 @@
                     component: scalebar,
                     position: "bottom-right",
                     index: 0
-                }, {
-                    component: coordConv,
-                    position: "bottom-left",
-                    index: 0
                 }
             ]);
-            console.log(measureClicked);
+
+            // EVENTS
+            $(document).ready(function(){
+
+                // TOGGLE LRS TOOL
+                $('#btnMeasureReadout').click(function() {
+                    let cursor = $('#mapViewDiv');
+                    let lrsTool = $(this).data('return');
+                    if(lrsTool) {
+                        cursor.css({'cursor':'auto'});
+                        $(this).attr('class','btn btn-dark btn-block');
+                        mapView.graphics.removeAll();
+                        $(this).data('return',0);
+                    }
+                    else {
+                        cursor.css({'cursor':'crosshair'});
+                        $(this).attr('class','btn btn-danger btn-block');
+                        $(this).data('return',1);
+                    }
+                });
+
+                // LISTEN FOR MAPVIEW CLICK EVENT
+                mapView.on("click", identRouteForM);
+
+
+                // MAIN FUNCTIONS
+                function identRouteForM(event) {
+                    let lrsTool = $('#btnMeasureReadout').data('return');
+                    if (lrsTool) {
+                        let query, queryTask, mapPoint, point, pxWidth, padding, newGeom;
+                        let controlSectionUrl = "https://services.arcgis.com/KTcxiTD9dsQw4r7Z/arcgis/rest/services/TxDOT_Control_Sections/FeatureServer/0";
+                        let roadwaysUrl = "https://services.arcgis.com/KTcxiTD9dsQw4r7Z/arcgis/rest/services/TxDOT_Roadways/FeatureServer/0";
+                        if (document.getElementById("radMPT").checked) {
+                            queryTask = new QueryTask({
+                                url: controlSectionUrl
+                            });
+                        }
+                        if (document.getElementById("radDFO").checked) {
+                            queryTask = new QueryTask({
+                                url: roadwaysUrl
+                            });
+                        }
+                        query = new Query({
+                            returnGeometry: true,
+                            outFields: ["*"],
+                            geometry: event.mapPoint,
+
+                        });
+                        // query.returnGeometry = true;
+                        // query.outFields = ["*"];
+                        // query.geometry = event.mapPoint;
+
+                        mapPoint = event.mapPoint;
+
+                        point = event.mapPoint;
+                        pxWidth = mapView.extent.width / mapView.width;
+                        padding = 15 * pxWidth;
+                        newGeom = new Extent({
+                            "xmin": point.x - padding,
+                            "ymin": point.y - padding,
+                            "xmax": point.x + padding,
+                            "ymax": point.y + padding,
+                            "spatialReference": point.spatialReference
+                        });
+
+                        query.geometry = newGeom;
+                        console.log(query);
+                        console.log(newGeom);
+                        queryTask.execute(query).then(function(results){
+                            console.log(results.features);
+                        });
+                        // queryTask.execute(query, getSegmentWithM);
+                    }
+                }
+
+            // function identRouteForM(event) {
+            //     if (measureClicked) {
+            //     if (document.getElementById("radMPT").checked) {
+            //       queryTask = new esri.tasks.QueryTask("https://services.arcgis.com/KTcxiTD9dsQw4r7Z/arcgis/rest/services/TxDOT_Control_Sections/FeatureServer/0");
+            //     }
+            //     if (document.getElementById("radDFO").checked) {
+            //       queryTask = new esri.tasks.QueryTask("https://services.arcgis.com/KTcxiTD9dsQw4r7Z/arcgis/rest/services/TxDOT_Roadways/FeatureServer/0");
+            //     }
+            //
+            //     query = new esri.tasks.Query();
+            //     query.returnGeometry = true;
+            //     query.outFields = ["*"];
+            //     query.geometry = event.mapPoint;
+            //
+            //     mapPoint = event.mapPoint;
+            //
+            //     var point = event.mapPoint;
+            //     var pxWidth = map.extent.getWidth() / map.width;
+            //     var padding = 15 * pxWidth;
+            //     var newGeom = new esri.geometry.Extent({
+            //       "xmin": point.x - padding,
+            //       "ymin": point.y - padding,
+            //       "xmax": point.x + padding,
+            //       "ymax": point.y + padding,
+            //       "spatialReference": point.spatialReference
+            //     });
+            //
+            //     query.geometry = newGeom;
+            //     // console.log(query);
+            //     queryTask.execute(query, getSegmentWithM);
+            //     }
+            //   }
+            });
         });
     </script>
 </body>
