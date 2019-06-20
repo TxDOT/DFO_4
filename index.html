@@ -31,9 +31,11 @@
         }
         #divReadout {
             position: absolute;
+            text-align: center;
             /* left: 60px; */
-            /* width: 300px */
+            width: 215px;
             top: 20px;
+            left: 30px;
             z-index: 100;
             /* color: white; */
             /* text-shadow: -2px -2px 0 #FFF, 2px -2px 0 #FFF, -2px 2px 0 #FFF, 2px 2px 0 #FFF; */
@@ -41,28 +43,31 @@
         #outputMessages {
             position: absolute;
             z-index: 70;
-            top: 0px;
-            left: 0;
+            top: 30px;
+            left: 30px;
             bottom: 0;
             box-sizing: border-box;
+            border-radius: 10px;
             padding: 20px;
-            height: 25%;
-            width: 220px;
+            height: 15%;
+            width: 275px;
             background: rgba(0, 0, 0, 0.5);
             color: white;
             font-size: 14px;
             line-height: 30px;
             overflow: auto;
+
      }
     </style>
 </head>
 <body>
     <div id="outputMessages">
-        <div id="divReadout">
-        <button type="button" class="btn btn-dark btn-block" id="btnMeasureReadout" data-return="0" title="Click to Activate/Deactive LRS Tool.">LRS Tool</button>
+        <div id="divReadout">Click to Activate/Deactivate
             <br><br>
+        <button type="button" class="btn btn-dark btn-block" id="btnMeasureReadout" data-return="0" title="Click to Activate/Deactive LRS Tool.">LRS Tool</button>
+            <!-- <br><br>
             <input id="radMPT" type="radio" name="lrsType" value="MPT" checked> Control Section Milepoint<br>
-            <input id="radDFO" type="radio" name="lrsType" value="DFO"> Distance From Origin<br>
+            <input id="radDFO" type="radio" name="lrsType" value="DFO"> Distance From Origin<br> -->
         </div>
     </div>
     <div id="mapViewDiv">
@@ -97,15 +102,8 @@
 
     <script>
 
-        var TxDOTVectorTileLayer;
-        var esri;
-        var map;
-        var queryTask;
-        var query;
-        // var measureClicked = false;
-        var gidWithMeasuresGeom;
-        var mapPoint;
         var featurePartIndex;
+        var resultList = [];
 
         require([
 
@@ -113,6 +111,7 @@
         "esri/Map",
         "esri/views/MapView",
         "esri/layers/VectorTileLayer",
+        "esri/layers/FeatureLayer",
         "esri/Basemap",
 
         // UI
@@ -147,6 +146,7 @@
         Map,
         MapView,
         VectorTileLayer,
+        FeatureLayer,
         Basemap,
         Home,
         Zoom,
@@ -165,10 +165,12 @@
         on,
         parser
         ) {
+            // var featurePartIndex;
             // CONSTRUCT MAP WITH INITIAL BASEMAP
             const spmVectorTile = new VectorTileLayer({
                 url: "https://tiles.arcgis.com/tiles/KTcxiTD9dsQw4r7Z/arcgis/rest/services/TxDOT_Vector_Tile_Basemap/VectorTileServer",
-                id: "txdot"
+                id: "txdot",
+                // popupTemplate: popupTemplate
             });
 
             const spmBasemap = new Basemap({
@@ -178,6 +180,99 @@
             const map = new Map({
                 basemap: spmBasemap
             });
+
+            const roadwaysTemplate = {
+                title: "Roadways",
+                content: [{
+                    type: "fields",
+                    fieldInfos: [{
+                        fieldName: "RTE_NM",
+                        label: "Route ID",
+                        visible: true
+                    }, {
+                        fieldName: "RDBD_TYPE",
+                        label: "Roadbed Type",
+                        visible: true
+                    }, {
+                        fieldName: "MAP_LBL",
+                        label: "Name/Number",
+                        visible: true
+                    } , {
+                        fieldName: "BEGIN_DFO",
+                        label: "Begin DFO",
+                        places: 3,
+                        visible: true
+                    } , {
+                        fieldName: "END_DFO",
+                        label: "End DFO",
+                        places: 3,
+                        visible: true
+                    }]
+                }]
+            };
+
+            const ctrlSectTemplate = {
+                title: "Control Sections",
+                content: [{
+                    type: "fields",
+                    fieldInfos: [{
+                        fieldName: "CTRL_SECT_NBR",
+                        label: "Control Section",
+                        visible: true
+                    }, {
+                        fieldName: "RTE_NM",
+                        label: "Route Name",
+                        visible: true
+                    }, {
+                        fieldName: "BEGIN_MPT",
+                        label: "Begin Mile Point",
+                        visible: true
+                    } , {
+                        fieldName: "END_MPT",
+                        label: "End Mile Point",
+                        visible: true
+                    } , {
+                        fieldName: "BEGIN_DFO",
+                        label: "Begin DFO",
+                        visible: true
+                    } , {
+                        fieldName: "END_DFO",
+                        label: "End DFO",
+                        visible: true
+                    }]
+                }]
+            };
+
+            const ctrlSectLyr = new FeatureLayer({
+                url: "https://services.arcgis.com/KTcxiTD9dsQw4r7Z/arcgis/rest/services/TxDOT_Control_Sections/FeatureServer/0",
+                visible: false,
+                opacity: 0.0,
+                popupEnabled: true,
+                outFields: ["CTRL_SECT_NBR","RTE_NM","BEGIN_MPT","END_MPT", "BEGIN_DFO", "END_DFO"],
+                // popupTemplate: ctrlSectTemplate
+                popupTemplate: {
+                    title: "Control Section LRS Readout",
+                    content: getMPT
+                }
+            });
+
+            const roadwaysLyr = new FeatureLayer({
+                url: "https://services.arcgis.com/KTcxiTD9dsQw4r7Z/arcgis/rest/services/TxDOT_Roadways/FeatureServer/0",
+                visible: false,
+                opacity: 0.0,
+                popupEnabled: true,
+                outFields: ["RTE_NM", "RDBD_TYPE", "MAP_LBL", "RTE_PRFX", "BEGIN_DFO", "END_DFO"],
+                popupTemplate: {
+                    title: "TxDOT Roadway LRS Readout",
+                    content: getDFO
+                }
+                // popupTemplate: roadwaysTemplate
+            });
+
+            map.addMany([
+                ctrlSectLyr,
+                roadwaysLyr
+            ]);
 
             // VIEW
             const mapView = new MapView({
@@ -192,10 +287,29 @@
                 },
                 popup: {
                     dockOptions: {
-                        position: "bottom-right"
+                        position: "bottom-left"
                     }
                 }
             });
+
+            // mapView.popup.watch("selectedFeature", function(e) {
+            //     mapView.graphics.removeAll();
+            //     if (e && e.geometry) {
+            //         mapView.graphics.add(
+            //             new Graphic({
+            //                 geometry: e.geometry,
+            //                 symbol: {
+            //                     type: "simple-fill",
+            //                     style: "none",
+            //                     outline: {
+            //                         color: "#6600FF",
+            //                         width: 2
+            //                     }
+            //                 }
+            //             })
+            //         );
+            //     }
+            // });
 
             // ESRI UI WIDGETS
             const home = new Home({
@@ -228,6 +342,15 @@
                 }
             ]);
 
+            function getMPT(){
+                let calcMPT = "Calculated MPT: "+resultList[0];
+                return calcMPT;
+            }
+            function getDFO(){
+                let calcDFO = "Calculated DFO: "+resultList[1];
+                return calcDFO;
+            }
+
             // EVENTS
             $(document).ready(function(){
 
@@ -239,67 +362,208 @@
                         cursor.css({'cursor':'auto'});
                         $(this).attr('class','btn btn-dark btn-block');
                         mapView.graphics.removeAll();
+                        ctrlSectLyr.visible = false;
+                        roadwaysLyr.visible = false;
                         $(this).data('return',0);
                     }
                     else {
                         cursor.css({'cursor':'crosshair'});
                         $(this).attr('class','btn btn-danger btn-block');
+                        ctrlSectLyr.visible = true;
+                        roadwaysLyr.visible = true;
                         $(this).data('return',1);
                     }
                 });
 
                 // LISTEN FOR MAPVIEW CLICK EVENT
-                mapView.on("click", identRouteForM);
+                mapView.on("immediate-click", identRouteForM);
 
-
-                // MAIN FUNCTIONS
+                // GET USER INPUT AND CONSTRUCT QUERY THAT RETURNS GEOMETRY
                 function identRouteForM(event) {
+                    resultList=[];
                     let lrsTool = $('#btnMeasureReadout').data('return');
                     if (lrsTool) {
-                        let query, queryTask, mapPoint, point, pxWidth, padding, newGeom;
-                        let controlSectionUrl = "https://services.arcgis.com/KTcxiTD9dsQw4r7Z/arcgis/rest/services/TxDOT_Control_Sections/FeatureServer/0";
-                        let roadwaysUrl = "https://services.arcgis.com/KTcxiTD9dsQw4r7Z/arcgis/rest/services/TxDOT_Roadways/FeatureServer/0";
-                        if (document.getElementById("radMPT").checked) {
-                            queryTask = new QueryTask({
-                                url: controlSectionUrl
-                            });
-                        }
-                        if (document.getElementById("radDFO").checked) {
-                            queryTask = new QueryTask({
-                                url: roadwaysUrl
-                            });
-                        }
+                        let i, query, mapPoint, pxWidth, padding, gidWithMeasuresGeom, displayM, calcMPT, calcDFO
+                        let queryTask = new QueryTask();
+                        let index = [
+                            "https://services.arcgis.com/KTcxiTD9dsQw4r7Z/arcgis/rest/services/TxDOT_Control_Sections/FeatureServer/0",
+                            "https://services.arcgis.com/KTcxiTD9dsQw4r7Z/arcgis/rest/services/TxDOT_Roadways/FeatureServer/0"
+                        ];
                         query = new Query({
                             returnGeometry: true,
+                            returnM: true,
                             outFields: ["*"],
-                            geometry: event.mapPoint,
-
                         });
-                        // query.returnGeometry = true;
-                        // query.outFields = ["*"];
-                        // query.geometry = event.mapPoint;
-
                         mapPoint = event.mapPoint;
-
-                        point = event.mapPoint;
                         pxWidth = mapView.extent.width / mapView.width;
                         padding = 15 * pxWidth;
-                        newGeom = new Extent({
-                            "xmin": point.x - padding,
-                            "ymin": point.y - padding,
-                            "xmax": point.x + padding,
-                            "ymax": point.y + padding,
-                            "spatialReference": point.spatialReference
+                        query.geometry= new Extent({
+                            "xmin": mapPoint.x - padding,
+                            "ymin": mapPoint.y - padding,
+                            "xmax": mapPoint.x + padding,
+                            "ymax": mapPoint.y + padding,
+                            "spatialReference": mapPoint.spatialReference
                         });
-
-                        query.geometry = newGeom;
                         console.log(query);
-                        console.log(newGeom);
-                        queryTask.execute(query).then(function(results){
-                            console.log(results.features);
-                        });
-                        // queryTask.execute(query, getSegmentWithM);
+                        for (i=0; i<index.length; i++) {
+                            queryTask.url = index[i];
+                            queryTask.execute(query).then(function(results){
+                                if (results.features.length==0) {
+                                  alert("Please click closer to a line.");
+                                  return;
+                                }
+
+                                mapView.graphics.removeAll();
+                                displayM = getPointM(mapPoint,results);
+                                if (displayM.indexOf("mpt")>-1){
+                                    let split = displayM.split(",");
+                                    calcMPT = split[1];
+                                    resultList.push(calcMPT);
+                                    console.log("Calculated MPT: "+calcMPT);
+                                }
+                                else {
+                                    let split = displayM.split(",");
+                                    calcDFO = split[1];
+                                    console.log("Calculated DFO: "+calcDFO);
+                                    resultList.push(calcDFO);
+                                }
+                            });
+                        }
                     }
+                }
+
+                // CALCULATE M-VALUE BASED ON QUERY RESULT
+                function getPointM(mapPt,gidWithM) {
+                    let mapPoint = mapPt;
+                    let gidWithMeasuresGeom = gidWithM;
+            	    var firstIntersectingPoint = findNearestCoordinate(mapPoint,gidWithMeasuresGeom);
+            	    var firstIntersectingCoord = geometryEngine.nearestVertex(gidWithMeasuresGeom.features[featurePartIndex].geometry, firstIntersectingPoint);
+            	    var vertexIndex = firstIntersectingCoord.vertexIndex;
+            	    var maxVertex = gidWithMeasuresGeom.features[featurePartIndex].geometry.paths[0].length-1;
+
+            	    if (vertexIndex == 0) {
+                  	    var coord2 = gidWithMeasuresGeom.features[featurePartIndex].geometry.paths[0][vertexIndex];
+                        var thePoint2 = new Point([coord2[0],coord2[1]], new SpatialReference({wkid: 3857 }));
+                        var point2M = gidWithMeasuresGeom.features[featurePartIndex].geometry.paths[0][vertexIndex][2];
+                        var geoMeterLength = geometryEngine.geodesicLength(createTwoPointPolyline(thePoint2,firstIntersectingPoint), 9001);
+                        var geoMileValue = ((geoMeterLength/1609.344)*1000)/1000;
+                        calculatedM = point2M + geoMileValue;
+            	    }
+
+            	    if (vertexIndex == maxVertex) {
+                  	    var coord2 = gidWithMeasuresGeom.features[featurePartIndex].geometry.paths[0][vertexIndex];
+                        var thePoint2 = new Point([coord2[0],coord2[1]], new SpatialReference({wkid: 3857 }));
+                        var point2M = gidWithMeasuresGeom.features[featurePartIndex].geometry.paths[0][vertexIndex][2];
+                        var geoMeterLength = geometryEngine.geodesicLength(createTwoPointPolyline(thePoint2,firstIntersectingPoint), 9001);
+                        var geoMileValue = ((geoMeterLength/1609.344)*1000)/1000;
+                        calculatedM = point2M - geoMileValue;
+            	    }
+
+                    if (vertexIndex > 0 && vertexIndex < maxVertex) {
+                  	    var coord1 = gidWithMeasuresGeom.features[featurePartIndex].geometry.paths[0][vertexIndex-1];
+                  	    var coord2 = gidWithMeasuresGeom.features[featurePartIndex].geometry.paths[0][vertexIndex];
+                  	    var coord3 = gidWithMeasuresGeom.features[featurePartIndex].geometry.paths[0][vertexIndex+1];
+
+                  	    var thePoint1 = new Point([coord1[0],coord1[1]], new SpatialReference({wkid: 3857 }));
+                  	    var thePoint2 = new Point([coord2[0],coord2[1]], new SpatialReference({wkid: 3857 }));
+                  	    var thePoint3 = new Point([coord3[0],coord3[1]], new SpatialReference({wkid: 3857 }));
+
+                  	   // drawPoint(thePoint1,Math.round(coord1[2]*1000)/1000,"#000000");
+                	   //     drawPoint(thePoint2,Math.round(coord2[2]*1000)/1000,"#000000");
+                  	   // drawPoint(thePoint3,Math.round(coord3[2]*1000)/1000,"#000000");
+
+                  	    var firstTestSegment = createTwoPointPolyline(thePoint1,thePoint2);
+                  	    var secondTestSegment = createTwoPointPolyline(thePoint2,thePoint3);
+
+                  	    var intersectsFirstSegment = geometryEngine.intersects(firstIntersectingPoint,firstTestSegment)
+                  	    var intersectsSecondSegment = geometryEngine.intersects(firstIntersectingPoint,secondTestSegment)
+                  	    var calculatedM = 0;
+
+                	    var point1M = gidWithMeasuresGeom.features[featurePartIndex].geometry.paths[0][vertexIndex-1][2];
+                	    var point2M = gidWithMeasuresGeom.features[featurePartIndex].geometry.paths[0][vertexIndex][2];
+                	    var point3M = gidWithMeasuresGeom.features[featurePartIndex].geometry.paths[0][vertexIndex+1][2];
+
+                       	var geoMeterLength = geometryEngine.geodesicLength(createTwoPointPolyline(thePoint2,firstIntersectingPoint), 9001);
+                        var geoMileValue = ((geoMeterLength/1609.344)*1000)/1000;
+
+                        if (intersectsFirstSegment) {
+                            if (point1M>point2M) {
+                                calculatedM = point2M + geoMileValue;
+                            }
+                            else {
+                                calculatedM = point2M - geoMileValue;
+                            }
+                        }
+                        else {
+                            if (point3M>point2M) {
+                                calculatedM = point2M + geoMileValue;
+                            }
+                            else {
+                                calculatedM = point2M - geoMileValue;
+                            }
+                        }
+                    }
+                    let displayM = Math.round(calculatedM*10000)/10000;
+                    if(gidWithMeasuresGeom.features[0].attributes.ASSET_NM){
+                        return "mpt,"+displayM;
+                    }
+                    else {
+                        return "dfo,"+displayM;
+                    }
+                }
+            	  //   drawPoint(firstIntersectingPoint,Math.round(calculatedM*1000)/1000,"#FF0000");
+            	  // }
+
+            	  // function drawPoint(thePoint,theLabel,theColor) {
+            	  //   var thePoint = new esri.geometry.Point([thePoint.x,thePoint.y], new SpatialReference({wkid: 3857 }));
+                  // //Point style
+                  // var symbol = new esri.symbol.SimpleMarkerSymbol();
+          			// 	symbol.style = esri.symbol.SimpleMarkerSymbol.STYLE_TRIANGLE;
+          			// 	symbol.setSize(6);
+          			// 	symbol.setColor(new esri.Color(theColor));
+          			// 	map.graphics.add(new esri.Graphic(thePoint, symbol));
+                  //
+          			// 	//Label
+          			// 	var label_symbol =  new esri.symbol.TextSymbol(theLabel);
+          			// 	label_symbol.setColor(new esri.Color(theColor));
+          			// 	label_symbol.setFont(new esri.symbol.Font("10pt").setWeight(esri.symbol.Font.WEIGHT_BOLD));
+                  //
+                  //         var currentScale = mapView.scale();
+          			// 	var labelOffset=Math.round(currentScale/350);
+                  //
+          			// 	//Location for the label
+          			// 	var labelLocation = new esri.geometry.Point([thePoint.x,thePoint.y+labelOffset], new SpatialReference({wkid: 3857 }));
+          			// 	map.graphics.add(new esri.Graphic(labelLocation, label_symbol));
+            	  // }
+            	  //-----End Measure
+
+                function createTwoPointPolyline(point1,point2) {
+                    var newPolyline = new Polyline(new SpatialReference({wkid:3857}));
+                    newPolyline.type = "polyline";
+                    var tmpAttLine = [];
+                    tmpAttLine.push(point1);
+                    tmpAttLine.push(point2);
+                    newPolyline.addPath(tmpAttLine);
+                    return newPolyline;
+                }
+
+                function findNearestCoordinate(point,gidWithM) {
+                    let gidWithMeasuresGeom = gidWithM;
+                    var shortestDistance = 20000;
+                    var firstIntersectingPoint;
+                    var firstIntersectingPointTemp;
+                    featurePartIndex = 0;
+
+                    for (var h=0; h < gidWithMeasuresGeom.features.length; h++) {
+                        firstIntersectingPointTemp = geometryEngine.nearestCoordinate(gidWithMeasuresGeom.features[h].geometry, point);
+                        if (firstIntersectingPointTemp.distance < shortestDistance) {
+                            shortestDistance = firstIntersectingPointTemp.distance;
+                            firstIntersectingPoint = firstIntersectingPointTemp;
+                            featurePartIndex = h;
+                        }
+                    }
+                    var returnPoint = new Point([firstIntersectingPoint.coordinate.x,firstIntersectingPoint.coordinate.y], new SpatialReference({wkid: 3857 }));
+                    return returnPoint;
                 }
 
             // function identRouteForM(event) {
