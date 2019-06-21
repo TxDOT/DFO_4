@@ -103,7 +103,9 @@
     <script>
 
         var featurePartIndex;
-        var resultList = [];
+        // var mpt={};
+        // var dfo={};
+        // var lrs={};
 
         require([
 
@@ -182,22 +184,18 @@
             });
 
             const roadwaysTemplate = {
-                title: "Roadways",
+                // title: "Roadways",
                 content: [{
                     type: "fields",
                     fieldInfos: [{
                         fieldName: "RTE_NM",
-                        label: "Route ID",
+                        label: "Route",
                         visible: true
                     }, {
                         fieldName: "RDBD_TYPE",
                         label: "Roadbed Type",
                         visible: true
                     }, {
-                        fieldName: "MAP_LBL",
-                        label: "Name/Number",
-                        visible: true
-                    } , {
                         fieldName: "BEGIN_DFO",
                         label: "Begin DFO",
                         places: 3,
@@ -210,9 +208,9 @@
                     }]
                 }]
             };
-
+            //
             const ctrlSectTemplate = {
-                title: "Control Sections",
+                // title: "Control Sections",
                 content: [{
                     type: "fields",
                     fieldInfos: [{
@@ -221,7 +219,7 @@
                         visible: true
                     }, {
                         fieldName: "RTE_NM",
-                        label: "Route Name",
+                        label: "Route",
                         visible: true
                     }, {
                         fieldName: "BEGIN_MPT",
@@ -248,12 +246,12 @@
                 visible: false,
                 opacity: 0.0,
                 popupEnabled: true,
-                outFields: ["CTRL_SECT_NBR","RTE_NM","BEGIN_MPT","END_MPT", "BEGIN_DFO", "END_DFO"],
-                // popupTemplate: ctrlSectTemplate
-                popupTemplate: {
-                    title: "Control Section LRS Readout",
-                    content: getMPT
-                }
+                outFields: ["*"],
+                popupTemplate: ctrlSectTemplate
+                // popupTemplate: {
+                //     title: "LRS Readout for {RTE_NM}",
+                //     // content: ctrl
+                // }
             });
 
             const roadwaysLyr = new FeatureLayer({
@@ -261,12 +259,12 @@
                 visible: false,
                 opacity: 0.0,
                 popupEnabled: true,
-                outFields: ["RTE_NM", "RDBD_TYPE", "MAP_LBL", "RTE_PRFX", "BEGIN_DFO", "END_DFO"],
-                popupTemplate: {
-                    title: "TxDOT Roadway LRS Readout",
-                    content: getDFO
-                }
-                // popupTemplate: roadwaysTemplate
+                outFields: ["*"],
+                popupTemplate: roadwaysTemplate
+                // popupTemplate: {
+                //     title: "LRS Readout for {RTE_NM}",
+                //     content: getDFO
+                // }
             });
 
             map.addMany([
@@ -343,11 +341,15 @@
             ]);
 
             function getMPT(){
-                let calcMPT = "Calculated MPT: "+resultList[0];
+                // let calcMPT = JSON.stringify(resultList);
+                let calcMPT = "Calculated MPT: "+lrs.mpt.CALC_MPT;
+                // console.log(mpt[0]);
                 return calcMPT;
             }
             function getDFO(){
-                let calcDFO = "Calculated DFO: "+resultList[1];
+                // let calcDFO = JSON.stringify(resultList);
+                let calcDFO = "Calculated DFO: "+lrs.dfo.CALC_DFO;
+                // console.log(dfo);
                 return calcDFO;
             }
 
@@ -380,15 +382,15 @@
 
                 // GET USER INPUT AND CONSTRUCT QUERY THAT RETURNS GEOMETRY
                 function identRouteForM(event) {
-                    resultList=[];
+                    // resultList=[];
                     let lrsTool = $('#btnMeasureReadout').data('return');
                     if (lrsTool) {
-                        let i, query, mapPoint, pxWidth, padding, gidWithMeasuresGeom, displayM, calcMPT, calcDFO
+                        let i, query, mapPoint, pxWidth, padding, gidWithMeasuresGeom, ctrlSectQuery, roadwaysQuery
                         let queryTask = new QueryTask();
-                        let index = [
-                            "https://services.arcgis.com/KTcxiTD9dsQw4r7Z/arcgis/rest/services/TxDOT_Control_Sections/FeatureServer/0",
-                            "https://services.arcgis.com/KTcxiTD9dsQw4r7Z/arcgis/rest/services/TxDOT_Roadways/FeatureServer/0"
-                        ];
+                        // let index = [
+                        //     "https://services.arcgis.com/KTcxiTD9dsQw4r7Z/arcgis/rest/services/TxDOT_Control_Sections/FeatureServer/0",
+                        //     "https://services.arcgis.com/KTcxiTD9dsQw4r7Z/arcgis/rest/services/TxDOT_Roadways/FeatureServer/0"
+                        // ];
                         query = new Query({
                             returnGeometry: true,
                             returnM: true,
@@ -405,30 +407,59 @@
                             "spatialReference": mapPoint.spatialReference
                         });
                         console.log(query);
-                        for (i=0; i<index.length; i++) {
-                            queryTask.url = index[i];
-                            queryTask.execute(query).then(function(results){
-                                if (results.features.length==0) {
-                                  alert("Please click closer to a line.");
-                                  return;
-                                }
+                        queryTask.url = "https://services.arcgis.com/KTcxiTD9dsQw4r7Z/arcgis/rest/services/TxDOT_Control_Sections/FeatureServer/0";
+                        queryTask.execute(query).then(function(results){
+                                // mpt={};
+                                let lrs={};
+                                // mpt = getPointM(mapPoint,results);
+                                lrs.mpt = getPointM(mapPoint,results);
+                                console.log(ctrlSectLyr.popupTemplate.title);
+                                ctrlSectLyr.popupTemplate.title = "Calculated MPT: " + lrs.mpt.CALC_MPT;
+                                // mpt.push(mptReturn);
+                                console.log(lrs);
 
-                                mapView.graphics.removeAll();
-                                displayM = getPointM(mapPoint,results);
-                                if (displayM.indexOf("mpt")>-1){
-                                    let split = displayM.split(",");
-                                    calcMPT = split[1];
-                                    resultList.push(calcMPT);
-                                    console.log("Calculated MPT: "+calcMPT);
-                                }
-                                else {
-                                    let split = displayM.split(",");
-                                    calcDFO = split[1];
-                                    console.log("Calculated DFO: "+calcDFO);
-                                    resultList.push(calcDFO);
-                                }
-                            });
-                        }
+
+                        });
+                        queryTask.url = "https://services.arcgis.com/KTcxiTD9dsQw4r7Z/arcgis/rest/services/TxDOT_Roadways/FeatureServer/0";
+                        queryTask.execute(query).then(function(results){
+                                // dfo={};
+                                // dfo = getPointM(mapPoint,results);
+                                let lrs = {};
+                                lrs.dfo = getPointM(mapPoint,results);
+                                roadwaysLyr.popupTemplate.title ="Calculated DFO: " + lrs.dfo.CALC_DFO;
+                                // dfo.push(dfoReturn);
+                                console.log(lrs);
+                        });
+                    //     for (i=0; i<index.length; i++) {
+                    //         queryTask.url = index[i];
+                    //         queryTask.execute(query).then(function(results){
+                    //             if (results.features.length==0) {
+                    //               alert("Please click closer to a line.");
+                    //
+                    //             }
+                    //
+                    //             mapView.graphics.removeAll();
+                    //             tempList = getPointM(mapPoint,results);
+                    //             resultList.push(tempList);
+                    //
+                    //             //NEED TO WRITE RESULTS TO SEPERATE ARRAYS
+                    //             // if (displayM.indexOf("mpt")>-1){
+                    //             //     let split = displayM.split(",");
+                    //             //     calcMPT = split[1];
+                    //             //     attr = split[0];
+                    //             //     resultList.push(calcMPT);
+                    //             //     console.log("Calculated MPT: "+calcMPT);
+                    //             // }
+                    //             // else {
+                    //             //     let split = displayM.split(",");
+                    //             //     calcDFO = split[1];
+                    //             //     attr = split[0];
+                    //             //     console.log("Calculated DFO: "+calcDFO);
+                    //             //     resultList.push(calcDFO);
+                    //             // }
+                    //         });
+                    //     }
+                    //     console.log(resultList);
                     }
                 }
 
@@ -504,11 +535,20 @@
                         }
                     }
                     let displayM = Math.round(calculatedM*10000)/10000;
-                    if(gidWithMeasuresGeom.features[0].attributes.ASSET_NM){
-                        return "mpt,"+displayM;
+                    let attr = gidWithMeasuresGeom.features[0].attributes;
+                    if(attr.ASSET_NM){
+                        attr.CALC_MPT = displayM;
+                        // let list = {
+                        //     attributes: attr
+                        // };
+                        return attr;
                     }
                     else {
-                        return "dfo,"+displayM;
+                        attr.CALC_DFO = displayM;
+                        // let list = {
+                        //     attributes: attr
+                        // };
+                        return attr;
                     }
                 }
             	  //   drawPoint(firstIntersectingPoint,Math.round(calculatedM*1000)/1000,"#FF0000");
