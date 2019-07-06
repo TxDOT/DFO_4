@@ -32,13 +32,10 @@
         #divReadout {
             position: absolute;
             text-align: center;
-            /* left: 60px; */
             width: 215px;
             top: 20px;
             left: 30px;
             z-index: 100;
-            /* color: white; */
-            /* text-shadow: -2px -2px 0 #FFF, 2px -2px 0 #FFF, -2px 2px 0 #FFF, 2px 2px 0 #FFF; */
         }
         #outputMessages {
             position: absolute;
@@ -49,7 +46,7 @@
             box-sizing: border-box;
             border-radius: 10px;
             padding: 20px;
-            height: 15%;
+            height: 25%;
             width: 275px;
             background: rgba(0, 0, 0, 0.5);
             color: white;
@@ -57,7 +54,8 @@
             line-height: 30px;
             overflow: auto;
 
-     }
+        }
+
     </style>
 </head>
 <body>
@@ -65,9 +63,8 @@
         <div id="divReadout">Click to Activate/Deactivate
             <br><br>
         <button type="button" class="btn btn-dark btn-block" id="btnMeasureReadout" data-return="0" title="Click to Activate/Deactive LRS Tool.">LRS Tool</button>
-            <!-- <br><br>
-            <input id="radMPT" type="radio" name="lrsType" value="MPT" checked> Control Section Milepoint<br>
-            <input id="radDFO" type="radio" name="lrsType" value="DFO"> Distance From Origin<br> -->
+            <br>
+        <button id="basemapToggle" type="button" class="btn btn-dark btn-block" title="Toggle Basemap">View TxDOT Imagery</button>
         </div>
     </div>
     <div id="mapViewDiv">
@@ -102,12 +99,10 @@
 
     <script>
 
-        var featurePartIndex;
-        var firstIntersectingPoint;
-        // var mpt={};
-        // var dfo={};
-        var lrs={};
-        var beginScale;
+        let featurePartIndex;
+        let firstIntersectingPoint;
+        let lrs={};
+        let beginScale;
 
         require([
 
@@ -116,12 +111,15 @@
         "esri/views/MapView",
         "esri/layers/VectorTileLayer",
         "esri/layers/FeatureLayer",
+        "esri/layers/WMTSLayer",
         "esri/Basemap",
+
 
         // UI
         "esri/widgets/Home",
         "esri/widgets/Zoom",
         "esri/widgets/ScaleBar",
+        "esri/widgets/BasemapToggle",
 
         // esri config, core, and tasks
         "esri/config",
@@ -136,8 +134,7 @@
         "esri/geometry/Point",
         "esri/geometry/Polyline",
 
-        // draw
-        // "esri/views/draw/Draw",
+        //graphics
         "esri/Graphic",
 
         // dojo
@@ -152,10 +149,12 @@
         MapView,
         VectorTileLayer,
         FeatureLayer,
+        WMTSLayer,
         Basemap,
         Home,
         Zoom,
         ScaleBar,
+        BasemapToggle,
         esriConfig,
         watchUtils,
         Query,
@@ -165,7 +164,6 @@
         SpatialReference,
         Point,
         Polyline,
-        // Draw,
         Graphic,
         dom,
         on,
@@ -182,12 +180,27 @@
                 // }
             });
 
-            const spmBasemap = new Basemap({
-                baseLayers: spmVectorTile
+            // esriConfig.request.corsEnabledServers.push("https://txgi.tnris.org");
+
+            const googleImagery = new WMTSLayer({
+                url: "https://txgi.tnris.org/login/path/corner-express-popcorn-compact/wmts",
+                serviceMode: "KVP",
+                id: "googles",
+                visible: false
             });
 
+            const spmBasemap = new Basemap({
+                baseLayers: [spmVectorTile]
+            });
+
+            const googleBasemap = new Basemap({
+                baseLayers: [googleImagery]
+            });
+
+
+
             const map = new Map({
-                basemap: spmBasemap
+                // basemap: spmBasemap
             });
 
             const roadwaysTemplate = {
@@ -279,13 +292,13 @@
                 outFields: ["*"],
                 // popupTemplate: roadwaysTemplate
                 popupTemplate: {
-                    // title: "LRS Readout for {RTE_NM}"+'<br>',
                     content: getLRS
                 }
             });
 
             map.addMany([
-                // spmVectorTile,
+                spmVectorTile,
+                googleImagery,
                 ctrlSectLyr,
                 roadwaysLyr
             ]);
@@ -323,57 +336,6 @@
                 // scaleDependentQueries();
               }
             });
-            // mapView.popup.watch("selectedFeature", function(event) {
-            //     console.log(lrs);
-            //     if(event && lrs.mpt && lrs.dfo) {
-            //         let popupGID = event.attributes.GID;
-            //         let lrsGID = lrs.mpt.GID;
-            //         let fCount = mapView.popup.featureCount;
-            //         console.log(event);
-            //         console.log(lrs.mpt);
-            //         console.log(lrs.dfo);
-            //         console.log(fCount);
-            //         // if(fCount>2){
-            //         //     console.log("greater than 2");
-            //         //     mapView.popup.featureNavigationEnabled = false;
-            //         //     mapView.popup.close();
-            //         //     mapView.graphics.removeAll();
-            //         // }
-            //         if(popupGID !== lrsGID || fCount > 2) {
-            //             console.log("selected feature != queried feature OR too many Features");
-            //             mapView.graphics.removeAll();
-            //             mapView.popup.featureNavigationEnabled = false;
-            //             mapView.popup.close();
-            //
-            //
-            //
-            //         }
-            //         mapView.popup.featureNavigationEnabled = true;
-            //
-            //
-            //     }
-            //     // else {
-            //     //     return;
-            //     // }
-            //     // console.log(lrsGID);
-            //     // console.log(popupGID);
-            //     //mapView.graphics.removeAll();
-            //     // if (e && e.geometry) {
-            //     //     mapView.graphics.add(
-            //     //         new Graphic({
-            //     //             geometry: e.geometry,
-            //     //             symbol: {
-            //     //                 type: "simple-fill",
-            //     //                 style: "none",
-            //     //                 outline: {
-            //     //                     color: "#6600FF",
-            //     //                     width: 2
-            //     //                 }
-            //     //             }
-            //     //         })
-            //     //     );
-            //     // }
-            // });
 
             // ESRI UI WIDGETS
             const home = new Home({
@@ -386,6 +348,10 @@
                 view: mapView,
                 unit: "dual",
             });
+            // const basemapToggle = new BasemapToggle({
+            //     view: mapView,
+            //     nextBasemap: spmBasemap
+            // });
 
             // ADD/MODIFY WIDGETS IN THE VIEW
             mapView.ui.remove("attribution");
@@ -403,6 +369,10 @@
                     component: scalebar,
                     position: "bottom-right",
                     index: 0
+                // }, {
+                //     component: basemapToggle,
+                //     position: "top-right",
+                //     index: 2
                 }
             ]);
 
@@ -410,45 +380,31 @@
                 let content;
                 if(!lrs.mpt && !lrs.dfo){
                     mapView.popup.close();
+                    return;
                 }
                 if (!lrs.mpt) {
-                    roadwaysLyr.popupTemplate.title = '<strong>'+"LRS Readout for Route: "+'</strong><h4 style="color:red";>'+lrs.dfo.RTE_NM+'</h4>';
                     content =
                         '<br><strong>'+"Coordinates: "+'</strong>'+lrs.dfo.LAT+", "+lrs.dfo.LONG+'<br><br>'+
-                        // '<strong>'+"Calculated MPT: "+'</strong>'+lrs.mpt.CALC_MPT+'<br><br>'+
-                        '<strong>'+"Calculated DFO: "+'</strong>'+lrs.dfo.CALC_DFO+'<br><br>';
-
-                    mapView.popup.location = firstIntersectingPoint;
+                        '<strong>'+"Calculated DFO: "+'</strong>'+lrs.dfo.CALC_DFO+'<br><br>'+
+                        '<strong>'+"Begin DFO: "+'</strong>'+lrs.dfo.BEGIN_DFO+'<br><br>'+
+                        '<strong>'+"End DFO: "+'</strong>'+lrs.dfo.END_DFO+'<br><br>';
                 }
                 else {
-                    roadwaysLyr.popupTemplate.title =
-                    '<strong>'+"LRS Readout for Route: "+'</strong><h4 style="color:red";>'+lrs.dfo.RTE_NM+'</h4>';
                     content =
                         '<br><strong>'+"Control Section Number: "+'</strong>'+lrs.mpt.CTRL_SECT_NBR+'<br>'+
                         '<br><strong>'+"Coordinates: "+'</strong>'+lrs.mpt.LAT+", "+lrs.mpt.LONG+'<br><br>'+
+                        '<strong>'+"Calculated DFO: "+'</strong>'+lrs.dfo.CALC_DFO+'<br><br>'+
                         '<strong>'+"Calculated MPT: "+'</strong>'+lrs.mpt.CALC_MPT+'<br><br>'+
-                        '<strong>'+"Calculated DFO: "+'</strong>'+lrs.dfo.CALC_DFO+'<br><br>';
+                        '<strong>'+"Begin DFO: "+'</strong>'+lrs.dfo.BEGIN_DFO+'<br><br>'+
+                        '<strong>'+"End DFO: "+'</strong>'+lrs.dfo.END_DFO+'<br><br>'+
+                        '<strong>'+"Begin MPT: "+'</strong>'+lrs.mpt.BEGIN_MPT+'<br><br>'+
+                        '<strong>'+"End MPT: "+'</strong>'+lrs.mpt.END_MPT+'<br><br>';
 
-                    mapView.popup.location = firstIntersectingPoint;
                 }
-
-
-
+                roadwaysLyr.popupTemplate.title = '<strong><h5>'+"LRS Readout for Route: "+'</strong><a style="color:red";>'+lrs.dfo.RTE_NM+'</a></h5>';
+                mapView.popup.location = firstIntersectingPoint;
                 return content;
             }
-
-            // function getMPT(){
-            //     // let calcMPT = JSON.stringify(resultList);
-            //     let calcMPT = "Calculated MPT: "+lrs.mpt.CALC_MPT;
-            //     // console.log(mpt[0]);
-            //     return calcMPT;
-            // }
-            // function getDFO(){
-            //     // let calcDFO = JSON.stringify(resultList);
-            //     let calcDFO = "Calculated DFO: "+lrs.dfo.CALC_DFO;
-            //     // console.log(dfo);
-            //     return calcDFO;
-            // }
 
             // EVENTS
             $(document).ready(function(){
@@ -457,6 +413,10 @@
                 $('#btnMeasureReadout').click(function() {
                     let cursor = $('#mapViewDiv');
                     let lrsTool = $(this).data('return');
+                    if (mapView.zoom <= 10) {
+                        alert("Zoom in Closer to Use LRS Tool");
+                        return;
+                    }
                     if(lrsTool) {
                         cursor.css({'cursor':'auto'});
                         $(this).attr('class','btn btn-dark btn-block');
@@ -474,22 +434,36 @@
                     }
                 });
 
+                // TOGGLE BASEMAP
+                $('#basemapToggle').click(function() {
+                    let spmActive = spmVectorTile.visible;
+                    if (spmActive) {
+                        googleImagery.visible = true;
+                        spmVectorTile.visible = false;
+                        $('#basemapToggle').html("View TxDOT Map");
+                    }
+                    else {
+                        spmVectorTile.visible = true;
+                        googleImagery.visible = false;
+                        $('#basemapToggle').html("View TxDOT Imagery");
+                    }
+                });
                 // LISTEN FOR MAPVIEW CLICK EVENT
                 mapView.on("immediate-click", identRouteForM);
+                mapView.popup.watch("content", function(){
+                    drawPoint(firstIntersectingPoint);
+                });
 
                 // GET USER INPUT AND CONSTRUCT QUERY THAT RETURNS GEOMETRY
                 function identRouteForM(event) {
-                    mapView.popup.location = firstIntersectingPoint;
-                    // resultList=[];
+
+                    mapView.graphics.removeAll();
                     let lrsTool = $('#btnMeasureReadout').data('return');
                     if (lrsTool) {
                         let i, query, mapPoint, pxWidth, padding, gidWithMeasuresGeom, ctrlSectQuery, roadwaysQuery;
                         lrs = {};
                         let queryTask = new QueryTask();
-                        // let index = [
-                        //     "https://services.arcgis.com/KTcxiTD9dsQw4r7Z/arcgis/rest/services/TxDOT_Control_Sections/FeatureServer/0",
-                        //     "https://services.arcgis.com/KTcxiTD9dsQw4r7Z/arcgis/rest/services/TxDOT_Roadways/FeatureServer/0"
-                        // ];
+
                         query = new Query({
                             returnGeometry: true,
                             returnM: true,
@@ -505,59 +479,18 @@
                             "ymax": mapPoint.y + padding,
                             "spatialReference": mapPoint.spatialReference
                         });
-                        console.log(query);
+
                         queryTask.url = "https://services.arcgis.com/KTcxiTD9dsQw4r7Z/arcgis/rest/services/TxDOT_Control_Sections/FeatureServer/0";
                         queryTask.execute(query).then(function(results){
-                                // mpt={};
-                                // let lrs={};
-                                // mpt = getPointM(mapPoint,results);
-                                lrs.mpt = getPointM(mapPoint,results);
-                                // console.log(ctrlSectLyr.popupTemplate.title);
-                                // ctrlSectLyr.popupTemplate.title = "Calculated MPT: " + lrs.mpt.CALC_MPT;
-                                // mpt.push(mptReturn);
-
-
+                            lrs.mpt = getPointM(mapPoint,results);
                         });
+
                         queryTask.url = "https://services.arcgis.com/KTcxiTD9dsQw4r7Z/arcgis/rest/services/TxDOT_Roadways/FeatureServer/0";
                         queryTask.execute(query).then(function(results){
-                                // dfo={};
-                                // dfo = getPointM(mapPoint,results);
-                                // let lrs = {};
-                                lrs.dfo = getPointM(mapPoint,results);
-                                // roadwaysLyr.popupTemplate.title ="Calculated DFO: " + lrs.dfo.CALC_DFO;
-                                // dfo.push(dfoReturn);
+                            lrs.dfo = getPointM(mapPoint,results);
                         });
                         console.log(lrs);
-                    //     for (i=0; i<index.length; i++) {
-                    //         queryTask.url = index[i];
-                    //         queryTask.execute(query).then(function(results){
-                    //             if (results.features.length==0) {
-                    //               alert("Please click closer to a line.");
-                    //
-                    //             }
-                    //
-                    //             mapView.graphics.removeAll();
-                    //             tempList = getPointM(mapPoint,results);
-                    //             resultList.push(tempList);
-                    //
-                    //             //NEED TO WRITE RESULTS TO SEPERATE ARRAYS
-                    //             // if (displayM.indexOf("mpt")>-1){
-                    //             //     let split = displayM.split(",");
-                    //             //     calcMPT = split[1];
-                    //             //     attr = split[0];
-                    //             //     resultList.push(calcMPT);
-                    //             //     console.log("Calculated MPT: "+calcMPT);
-                    //             // }
-                    //             // else {
-                    //             //     let split = displayM.split(",");
-                    //             //     calcDFO = split[1];
-                    //             //     attr = split[0];
-                    //             //     console.log("Calculated DFO: "+calcDFO);
-                    //             //     resultList.push(calcDFO);
-                    //             // }
-                    //         });
-                    //     }
-                    //     console.log(resultList);
+
                     }
                 }
 
@@ -597,10 +530,6 @@
                   	    var thePoint2 = new Point([coord2[0],coord2[1]], new SpatialReference({wkid: 3857 }));
                   	    var thePoint3 = new Point([coord3[0],coord3[1]], new SpatialReference({wkid: 3857 }));
 
-                  	   // drawPoint(thePoint1,Math.round(coord1[2]*1000)/1000,"#000000");
-                	   //     drawPoint(thePoint2,Math.round(coord2[2]*1000)/1000,"#000000");
-                  	   // drawPoint(thePoint3,Math.round(coord3[2]*1000)/1000,"#000000");
-
                   	    var firstTestSegment = createTwoPointPolyline(thePoint1,thePoint2);
                   	    var secondTestSegment = createTwoPointPolyline(thePoint2,thePoint3);
 
@@ -636,52 +565,44 @@
                     let displayX = Math.round(firstIntersectingPoint.latitude*100000)/100000;
                     let displayY = Math.round(firstIntersectingPoint.longitude*100000)/100000;
                     let attr = gidWithMeasuresGeom.features[0].attributes;
-                    // mapView.popup.location = firstIntersectingPoint;
-                    // console.log(firstIntersectingPoint);
+
                     if(attr.ASSET_NM){
                         attr.CALC_MPT = displayM;
                         attr.LAT = displayX;
                         attr.LONG = displayY;
-                        // let list = {
-                        //     attributes: attr
-                        // };
                         return attr;
                     }
                     else {
                         attr.CALC_DFO = displayM;
                         attr.LAT = displayX;
                         attr.LONG = displayY;
-                        // let list = {
-                        //     attributes: attr
-                        // };
                         return attr;
                     }
                 }
-            	  //   drawPoint(firstIntersectingPoint,Math.round(calculatedM*1000)/1000,"#FF0000");
-            	  // }
 
-            	  // function drawPoint(thePoint,theLabel,theColor) {
-            	  //   var thePoint = new esri.geometry.Point([thePoint.x,thePoint.y], new SpatialReference({wkid: 3857 }));
-                  // //Point style
-                  // var symbol = new esri.symbol.SimpleMarkerSymbol();
-          			// 	symbol.style = esri.symbol.SimpleMarkerSymbol.STYLE_TRIANGLE;
-          			// 	symbol.setSize(6);
-          			// 	symbol.setColor(new esri.Color(theColor));
-          			// 	map.graphics.add(new esri.Graphic(thePoint, symbol));
-                  //
-          			// 	//Label
-          			// 	var label_symbol =  new esri.symbol.TextSymbol(theLabel);
-          			// 	label_symbol.setColor(new esri.Color(theColor));
-          			// 	label_symbol.setFont(new esri.symbol.Font("10pt").setWeight(esri.symbol.Font.WEIGHT_BOLD));
-                  //
-                  //         var currentScale = mapView.scale();
-          			// 	var labelOffset=Math.round(currentScale/350);
-                  //
-          			// 	//Location for the label
-          			// 	var labelLocation = new esri.geometry.Point([thePoint.x,thePoint.y+labelOffset], new SpatialReference({wkid: 3857 }));
-          			// 	map.graphics.add(new esri.Graphic(labelLocation, label_symbol));
-            	  // }
-            	  //-----End Measure
+                function drawPoint(coordinates) {
+                    mapView.graphics.removeAll();
+                    let point = {
+                        type: "point",
+                        x: coordinates.x,
+                        y: coordinates.y,
+                        spatialReference: mapView.spatialReference
+                    };
+
+                    let graphic = new Graphic({
+                        geometry: point,
+                        symbol: {
+                          type: "simple-marker",
+                          style: "x",
+                          size: "16px",
+                          outline: {
+                            color: [255, 0, 0],
+                            width: 2
+                          }
+                        }
+                    });
+                    mapView.graphics.add(graphic);
+                }
 
                 function createTwoPointPolyline(point1,point2) {
                     var newPolyline = new Polyline(new SpatialReference({wkid:3857}));
